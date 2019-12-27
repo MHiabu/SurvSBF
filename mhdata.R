@@ -15,7 +15,8 @@
 ## 
 ### Code:
 SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, x.max=NULL, integral.approx='midd',it=100,kern=function(u){return(0.75*(1-u^2)*(abs(u)<1))},initial=NULL)
-{                               
+{       data<-data[,c(1,3:ncol(data),2)]
+                          
   smooth.alpha<-function(alpha,K.X.b,k.X.b,K.b,k.b,x.grid,dx,n.grid,d,n)
   {
     alpha.smooth.i<-array(dim=c(d,n))
@@ -63,7 +64,6 @@ SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, 
   n<-nrow(data)
   
   
-  data<-data[,c(1,3:ncol(data),2)]
   
   if(is.null(x.grid)) x.grid<-lapply(1:d,function(k) data[order(data[,k]),k])
   
@@ -170,9 +170,22 @@ SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, 
   return(list(alpha_backfit=alpha_backfit,l=l,x.grid=x.grid))
 }
 
-SBF.MH.CLL<-function(data,bandwidth,weight='sw',x.grid=NULL,n.grid.additional=0, x.min=NULL, x.max=NULL, integral.approx='right',it=100,kern=function(u){return(0.75*(1-u^2                         )*(abs(u)<1))},initial=NULL,kcorr=kcorr,LC)
+SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.additional=0, x.min=NULL, x.max=NULL, integral.approx='right',it=100,kern=function(u){return(0.75*(1-u^2                         )*(abs(u)<1))},initial=NULL,kcorr=kcorr,LC)
 {   data<-data[,c(1,3:ncol(data),2)]
   
+# 
+   formula <- formula(formula)
+   if (class(formula) != "formula") {
+     stop("Error: Invalid formula.")
+   }
+   data.selected <- as.list(attr(terms(frmla), "variables"))[-1]
+     
+     
+
+
+
+
+
   smooth.alpha<-function(alpha,K.X.b,k.X.b,K.b,k.b,d,n)
   {
     alpha.smooth.i<-array(dim=c(d,n))
@@ -642,9 +655,10 @@ mhcovariate <- function(n,d=5,rho=0,seed){
 
 # data generating mechanism
 mhrate <- function(Z,violate.cox=TRUE){
+     Z<-as.matrix(Z)
     d <- NCOL(Z)
     phi <- vector(length=d,mode="list")
-    if (violate.cox[[1]]==TRUE){
+    if (violate.cox==TRUE){
         # Cox violated
         for(k in 1:d){
             if ((k%%2)==1)  {phi[[k]]<- function(z) 2*sin(pi*z)} else {phi[[k]]<-function(z) -2*sin(pi*z)}
@@ -652,7 +666,7 @@ mhrate <- function(Z,violate.cox=TRUE){
     }else{
         # Cox satisfied
         for(k in 1:d){
-            if ((k%%2)==1)  {phi[[k]]<- function(z) -z} else {phi[[k]]<-function(z) 2*z}
+            if ((k%%2)==1)  {phi[[k]]<- function(z) -2*z} else {phi[[k]]<-function(z) 2*z}
         }
     }
     top <- rep(0,NROW(Z))
