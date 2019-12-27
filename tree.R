@@ -4,9 +4,12 @@ require(survival)
 library(randomForestSRC)
 library(riskRegression)
 library(prodlim)
+library("VGAM")
+
 # load some functions 
 source("mhdata.R")
-set <- list(d=5,rho=0,model=1,violate.cox=TRUE,seed=1000)
+seed1<-sample(1:99999,1) 
+set <- list(d=5,rho=0,model=2,violate.cox=FALSE,seed=seed1)
 large.data <- do.call("mhdata",c(list(n=20000),set))
 train.data <- do.call("mhdata",c(list(n=300),set))
 pred <- paste0("X", 1:(set$d-1))
@@ -31,9 +34,9 @@ alpha_backfit2<-SBF.MH.CLL(frmla,train.data,b.grid,weight='sw',it=it,x.grid=NULL
 
 #####  now fit trained models
 set.seed(82423)   #363, 30462
-seed<-sample(1:99999,1) 
+seed2<-sample(1:99999,1) 
 ##### predicted survival for a single new subject
-test.data <- do.call("mhdata",c(list(n=2),replace(set,"seed",seed)))[,-c(1,2)]
+test.data <- do.call("mhdata",c(list(n=2),replace(set,"seed",seed2)))[,-c(1,2)]
 #forest1.fit<-1-predictRisk(forest1, newdata=test.data[1:2,,drop=FALSE],times=sort(unique(train.data$time##)))[1,]
 forest2.fit<-predict(forest2, test.data[1,,drop=FALSE])
 cox.pred<-survfit(cox.fit, test.data[1,,drop=FALSE])
@@ -42,10 +45,14 @@ predict.sbf.LL<- predict.sbf(alpha_backfit2,test.data[1,],1)
 
 # plot true survival curve
 cbbPalette <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#D55E00", "#0072B2", "#CC79A7", "#F0E442")
-true_par <- exp(mhrate(Z=test.data[1,],set$violate.cox))
-plot.points.index<-pexp(forest2.fit$time,rate=true_par,lower.tail = FALSE)>0.001
+
+
+surv.function <- mhrate(Z=test.data[1,],set$model,set$violate.cox)$surv.function
+plot.points.index <- surv.function(forest2.fit$time)>0.001
+
 plot.points<-forest2$time.interest[plot.points.index]
-plot(plot.points,pexp(plot.points,rate=true_par,lower.tail = FALSE),type='l',lwd=3)
+plot(plot.points,surv.function(plot.points),type='l',lwd=3)
+
 #lines(sort(unique(train.data$time)),forest1.fit,col=cbbPalette[3],lwd=3)
 lines(cox.pred$time,cox.pred$surv,col=cbbPalette[2], lwd=3)
 lines(forest2.fit$time,as.numeric(forest2.fit$survival),col=cbbPalette[6], lwd=3)

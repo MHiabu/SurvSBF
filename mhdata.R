@@ -654,7 +654,7 @@ mhcovariate <- function(n,d=5,rho=0,seed){
 
 
 # data generating mechanism
-mhrate <- function(Z,violate.cox=TRUE){
+mhrate <- function(Z,model=1,violate.cox=TRUE){
      Z<-as.matrix(Z)
     d <- NCOL(Z)
     phi <- vector(length=d,mode="list")
@@ -669,6 +669,10 @@ mhrate <- function(Z,violate.cox=TRUE){
             if ((k%%2)==1)  {phi[[k]]<- function(z) -2*z} else {phi[[k]]<-function(z) 2*z}
         }
     }
+    
+    
+    
+    
     top <- rep(0,NROW(Z))
     for (k in 1:d)
     {
@@ -677,7 +681,8 @@ mhrate <- function(Z,violate.cox=TRUE){
     
   
     
-    
+    if (model==1)  surv.function <- function(t){ pexp(t,rate=exp(top),lower.tail = FALSE)}
+    if (model==2)  surv.function<-function(t){ pmakeham(t,scale=1, shape=exp(top),lower.tail =                                                  FALSE)}
     
     #### true rate parameter for the hazard function
     # true_par<-0
@@ -685,20 +690,35 @@ mhrate <- function(Z,violate.cox=TRUE){
     #     true_par<-  true_par+phi[[k]](Z[[k]])
     # }
     # true_par<-exp(true_par)
-     return(top)
+     return(list(top=top, surv.function=surv.function))
 }
 
 mhdata <- function(n=200,d=5,rho=0,model=1,violate.cox=TRUE,seed){
     if (!missing(seed)) set.seed(seed)
     Z <- mhcovariate(n=n,d=d,rho=rho)
     # regression coefficients
-    top <- mhrate(Z,violate.cox=violate.cox)
+    top <- mhrate(Z,model,violate.cox=violate.cox)$top
+    if (model==1){
     Time<-rexp(n,exp(top))
     C<-rexp(n,exp(top)/1.75)
-    TT<-Time*(Time<=C)+C*(Time>C)
-    status<-(Time<=C)*1  ## censoring indicator
-    data<-data.frame(time=TT,status=status,Z)
-    data
+ 
+    }
+
+  if (model==2)
+  #survivaldistr=='makeham' 
+  { 
+     beta<-1
+     alpha<- 1
+     alpha <- exp(top)*alpha
+    Time<-rmakeham(n,beta, alpha)
+    C<-rmakeham(n,beta, alpha/1.75)
+  }
+    
+  TT<-Time*(Time<=C)+C*(Time>C)
+  status<-(Time<=C)*1  ## censoring indicator
+  data<-data.frame(time=TT,status=status,Z)
+  data
+
 }
 
 
