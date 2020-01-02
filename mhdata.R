@@ -617,11 +617,12 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
 
 
 predict.sbf<-function(result, data, times){
-  
+  data<-as.matrix(data)
   x.grid<-result$x.grid
   alpha_sbf<-result$alpha_backfit
   surv.times<-x.grid[[1]][-1]
   surv.prob <- matrix(nrow=nrow(data), ncol=length(surv.times))
+ 
   for(i in 1:nrow(data)){
   find.index<- error<-numeric(length(alpha_sbf))
   for (j in 2:length(alpha_sbf)){
@@ -716,7 +717,7 @@ mhdata <- function(n=200,d=5,rho=0,model=1,violate.cox=TRUE,seed){
     
   TT<-Time*(Time<=C)+C*(Time>C)
   status<-(Time<=C)*1  ## censoring indicator
-  data<-data.frame(time=TT,status=status,Z)
+  data<-data.frame(time=TT,status=status,as.data.frame(Z))
   data
 
 }

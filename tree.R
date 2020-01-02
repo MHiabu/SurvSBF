@@ -9,10 +9,10 @@ library("VGAM")
 # load some functions 
 source("mhdata.R")
 seed1<-sample(1:99999,1) 
-set <- list(d=5,rho=0,model=2,violate.cox=FALSE,seed=seed1)
+set <- list(d=4,rho=0,model=2,violate.cox=TRUE,seed=seed1)
 large.data <- do.call("mhdata",c(list(n=20000),set))
-train.data <- do.call("mhdata",c(list(n=300),set))
-pred <- paste0("X", 1:(set$d-1))
+train.data <- do.call("mhdata",c(list(n=500),set))
+pred <- paste0("V", 1:(set$d-1))
 frmla<-reformulate(pred,"Surv(time, status)")
 # plot(prodlim(Hist(time,status)~1,data=large.data),xlim=c(0,100))
 
@@ -24,7 +24,7 @@ forest2 <-rfsrc(frmla,data=train.data,importance = "none",num.trees=1000,mtry=se
 # cox
 cox.fit<-coxph(frmla , data=train.data)
 # munir's stuff
-it=30
+it=50
 b.grid<-numeric(set$d)
   b.grid[1]<-0.1^set$d
 b.grid[2:set$d]<-rep(0.2,set$d-1)
@@ -36,7 +36,7 @@ alpha_backfit2<-SBF.MH.CLL(frmla,train.data,b.grid,weight='sw',it=it,x.grid=NULL
 set.seed(82423)   #363, 30462
 seed2<-sample(1:99999,1) 
 ##### predicted survival for a single new subject
-test.data <- do.call("mhdata",c(list(n=2),replace(set,"seed",seed2)))[,-c(1,2)]
+test.data <- as.data.frame(as.matrix(do.call("mhdata",c(list(n=2),replace(set,"seed",seed2)))[,-c(1,2)]))
 #forest1.fit<-1-predictRisk(forest1, newdata=test.data[1:2,,drop=FALSE],times=sort(unique(train.data$time##)))[1,]
 forest2.fit<-predict(forest2, test.data[1,,drop=FALSE])
 cox.pred<-survfit(cox.fit, test.data[1,,drop=FALSE])
