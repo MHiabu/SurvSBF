@@ -8,6 +8,8 @@ library("VGAM")
 
 # load some functions 
 source("mhdata.R")
+sapply(list.files('R',pattern = "[.]R$",full.names=TRUE),source)
+
 seed1<-4840
 seed1<-sample(1:99999,1) 
 set <- list(d=4,rho=0,model=2,violate.cox=TRUE,seed=seed1)
