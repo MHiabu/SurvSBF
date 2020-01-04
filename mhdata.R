@@ -14,9 +14,25 @@
 #----------------------------------------------------------------------
 ## 
 ### Code:
-SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, x.max=NULL, integral.approx='midd',it=100,kern=function(u){return(0.75*(1-u^2)*(abs(u)<1))},initial=NULL)
-{       data<-data[,c(1,3:ncol(data),2)]
-                          
+SBF.MH.LC<-function(formula,data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, x.max=NULL, integral.approx='midd',it=100,kern=function(u){return(0.75*(1-u^2)*(abs(u)<1))},initial=NULL)
+{       
+        
+Terms <- terms(x=formula,data=data)
+mm <- na.omit(get_all_vars(formula(Terms),data=data))
+if (NROW(mm) == 0) stop("No (non-missing) observations")
+
+response <- model.response(model.frame(update(formula,".~1"),data=mm))
+X       <- prodlim::model.design(Terms,
+                                 data=mm,
+                                 maxOrder=1,
+                                 dropIntercept=TRUE)[[1]]
+
+
+time <- as.vector(response[,"time"])
+status <- as.vector(response[,"status"])
+X <- cbind( time,X)
+
+                  
   smooth.alpha<-function(alpha,K.X.b,k.X.b,K.b,k.b,x.grid,dx,n.grid,d,n)
   {
     alpha.smooth.i<-array(dim=c(d,n))
@@ -31,7 +47,7 @@ SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, 
       }}
     return(list(alpha.smooth.i=alpha.smooth.i,alpha.smooth.i.0=alpha.smooth.i.0))
   }
-  get.new.alpha<-function(data,alpha,K.X.b,k.X.b,K.b,k.b,Y,k,x.grid,dx,n.grid,d,n)
+  get.new.alpha<-function(status,alpha,K.X.b,k.X.b,K.b,k.b,Y,k,x.grid,dx,n.grid,d,n)
   {
     
     alpha.smooth.i<-smooth.alpha(alpha,K.X.b,k.X.b,K.b,k.b,x.grid,dx,n.grid,d,n)
@@ -51,7 +67,7 @@ SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, 
       D<- rowSums(sapply(1:n, function (i) { return((dx[[1]]*(alpha.minusk.smooth[i]*Y[i,]))%*%(K.b/k.b))}))
     }else D<- rowSums(sapply(1:n, function (i) { return(as.numeric(dx[[1]]%*%(Y[i,]*(alpha.minusk.smooth[i,])))*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
     
-    O<- rowSums(sapply(1:n, function (i) { return((data$status[i])*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
+    O<- rowSums(sapply(1:n, function (i) { return((status[i])*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
     
     
     return(O/D)
@@ -60,12 +76,12 @@ SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, 
   
   # K.b<-array(0,dim=c(n.grid[1],n.grid[1]))
   # k.b<-array(0,dim=c(n.grid[1]))
-  d<-ncol(data)-1
-  n<-nrow(data)
+  d <- ncol(X) 
+  n <- nrow(X)
   
   
   
-  if(is.null(x.grid)) x.grid<-lapply(1:d,function(k) data[order(data[,k]),k])
+  if(is.null(x.grid)) x.grid<-lapply(1:d,function(k) X[order(X[,k]),k])
   
   
   if(is.null(x.min)) x.min<-sapply(x.grid,head,1)
@@ -112,10 +128,10 @@ SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, 
   k.b<-colSums(dx[[1]]*apply(u/bandwidth[1],1:2,kern)/(bandwidth[1]))
   
   
-  X<-t(data[,-(d+1)])
+  X<-t(X)
   
   Y<-t(sapply(1:n,function(i) { temp<-numeric(n.grid[1])
-  for (l in 1:n.grid[1]) {temp[l]<-as.numeric((x.grid[[1]][l]<=data$time[i]))
+  for (l in 1:n.grid[1]) {temp[l]<-as.numeric((x.grid[[1]][l]<=time[i]))
   } 
   return(temp) 
   }
@@ -152,7 +168,7 @@ SBF.MH.LC<-function(data,bandwidth,x.grid=NULL,n.grid.additional=0, x.min=NULL, 
       
       
       
-      alpha_backfit[[k]]<- get.new.alpha(data,alpha_backfit,K.X.b,k.X.b,K.b,k.b,Y,k,x.grid,dx,n.grid,d,n)
+      alpha_backfit[[k]]<- get.new.alpha(status,alpha_backfit,K.X.b,k.X.b,K.b,k.b,Y,k,x.grid,dx,n.grid,d,n)
       
       
       # for (j in 1:(d-1))
@@ -174,15 +190,29 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
 {   data<-data[,c(1,3:ncol(data),2)]
   
 # 
-   formula <- formula(formula)
-   if (class(formula) != "formula") {
-     stop("Error: Invalid formula.")
-   }
-   data.selected <- as.list(attr(terms(frmla), "variables"))[-1]
+   # formula <- formula(formula)
+   # if (class(formula) != "formula") {
+   #   stop("Error: Invalid formula.")
+   # }
+   # data.selected <- as.list(attr(terms(frmla), "variables"))[-1]
+   #   
      
-     
-
-
+   Terms <- terms(x=formula,data=data)
+   mm <- na.omit(get_all_vars(formula(Terms),data=data))
+   if (NROW(mm) == 0) stop("No (non-missing) observations")
+  
+  response <- model.response(model.frame(update(formula,".~1"),data=mm))
+   X       <- prodlim::model.design(Terms,
+                          data=mm,
+                          maxOrder=1,
+                          dropIntercept=TRUE)[[1]]
+   
+   
+   time <- as.vector(response[,"time"])
+   status <- as.vector(response[,"status"])
+   X <- cbind( time,X)
+   
+   # }}}
 
 
 
@@ -242,7 +272,7 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
     return(list( taylor.alpha.i= taylor.alpha.i,taylor.alpha.i.square= taylor.alpha.i.square,taylor.alpha.i.0=taylor.alpha.i.0,taylor.alpha.i.0.square=taylor.alpha.i.0.square             ))
   }
   
-  get.alpha.new<-function(data,alpha,alpha.1,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n,l)
+  get.alpha.new<-function(time,status,alpha,alpha.1,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n,l)
   {
     
     if (weight=='sw'){
@@ -270,7 +300,7 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
       
       
       #  O<- rowSums(sapply(1:n, function (i) { return((alpha.minusk.smooth[kk,bb,i]*data$status[i])*(K.X.b[[kk]][bb,i,]/k.X.b[[kk]][bb,i]))})) ### for different waiting
-      O1<- rowSums(sapply(1:n, function (i) { return((data$status[i])*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
+      O1<- rowSums(sapply(1:n, function (i) { return((status[i])*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
       O<-O1-alpha.1[[k]]*O2
     }
     
@@ -318,8 +348,8 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
       
       if (k==1)
       {
-        O1<- rowSums(sapply(1:n, function (i) { return((data$status[i])*taylor.alpha.minusk[i]*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-      }else O1<- rowSums(sapply(1:n, function (i) { return((data$status[i])*taylor.alpha.minusk[i,which(x.grid[[1]]==data$time[i])]*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
+        O1<- rowSums(sapply(1:n, function (i) { return((status[i])*taylor.alpha.minusk[i]*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
+      }else O1<- rowSums(sapply(1:n, function (i) { return((status[i])*taylor.alpha.minusk[i,which(x.grid[[1]]==time[i])]*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
       
       
       O<-O1-alpha.1[[k]]*O2
@@ -331,7 +361,7 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
     return(O/D)
   } 
   
-  get.alpha.1.new<-function(data,alpha,alpha.1,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n)
+  get.alpha.1.new<-function(time,status,alpha,alpha.1,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n)
   {
     
     if (weight=='sw'){
@@ -358,7 +388,7 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
       
       
       #  O<- rowSums(sapply(1:n, function (i) { return((alpha.minusk.smooth[kk,bb,i]*data$status[i])*(K.X.b[[kk]][bb,i,]/k.X.b[[kk]][bb,i]))})) ### for different waiting
-      O1<- rowSums(sapply(1:n, function (i) { return((data$status[i])*(dX.b[[k]][i,]*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
+      O1<- rowSums(sapply(1:n, function (i) { return((status[i])*(dX.b[[k]][i,]*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
       O<-O1-alpha[[k]]*O2
     }
     
@@ -397,8 +427,8 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
       #  O<- rowSums(sapply(1:n, function (i) { return((alpha.minusk.smooth[kk,bb,i]*data$status[i])*(K.X.b[[kk]][bb,i,]/k.X.b[[kk]][bb,i]))})) ### for different waiting
       if (k==1)
       {
-        O1<- rowSums(sapply(1:n, function (i) { return((data$status[i])*taylor.alpha.minusk[i]*((dX.b[[k]][i,])*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-      }else O1<- rowSums(sapply(1:n, function (i) { return((data$status[i])*taylor.alpha.minusk[i,which(x.grid[[1]]==data$time[i])]*((dX.b[[k]][i,])*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
+        O1<- rowSums(sapply(1:n, function (i) { return((status[i])*taylor.alpha.minusk[i]*((dX.b[[k]][i,])*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
+      }else O1<- rowSums(sapply(1:n, function (i) { return((status[i])*taylor.alpha.minusk[i,which(x.grid[[1]]==time[i])]*((dX.b[[k]][i,])*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
       
       O<-O1-alpha[[k]]*O2
       
@@ -414,10 +444,10 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
   
   
   
-  d <- ncol(data) - 1
-  n <- nrow(data)
+  d <- ncol(X) 
+  n <- nrow(X)
   
-  if(is.null(x.grid)) x.grid<-lapply(1:d,function(k) data[order(data[,k]),k])
+  if(is.null(x.grid)) x.grid<-lapply(1:d,function(k) X[order(X[,k]),k])
   if(is.null(x.min)) x.min<-sapply(x.grid,head,1)
   if(is.null(x.max)) x.max<-sapply(x.grid,tail,1)
   
@@ -469,11 +499,11 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
   
   dX0.b<-u#/bandwidth[1]
   
-  X<-t(data[,-(d+1)])   # status is in the last column of data
+  X<-t(X)  # status is in the last column of data
   
   
   Y<-t(sapply(1:n,function(i) { temp<-numeric(n.grid[1])
-  for (l in 1:n.grid[1]) {temp[l]<-as.numeric((x.grid[[1]][l]<=data$time[i]))
+  for (l in 1:n.grid[1]) {temp[l]<-as.numeric((x.grid[[1]][l]<=time[i]))
   } 
   return(temp) 
   }
@@ -511,9 +541,13 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
   alpha_backfit<-list()
   alpha.1_backfit<-list()
   
+  if (is.null(initial)){
+    for(k in 1:d){
+      alpha_backfit[[k]]<-rep(1, n.grid[k])
+    }
+  } else  alpha_backfit<-initial
   
   for(k in 1:d){
-    alpha_backfit[[k]]<-rep(1, n.grid[k])
     alpha.1_backfit[[k]]<-rep(0, n.grid[k])
     
   }
@@ -539,7 +573,7 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
       
       #for(inner in 1:5){
       
-      alpha_backfit[[k]]<- get.alpha.new(data,alpha_backfit,alpha.1_backfit,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n,l)
+      alpha_backfit[[k]]<- get.alpha.new(time,status,alpha_backfit,alpha.1_backfit,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n,l)
       
       
       #for (j in 2:d) {  alpha_backfit[[j]]<- alpha_backfit[[j]]/ alpha_backfit[[j]][1]
@@ -553,7 +587,7 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
       alpha_backfit[[k]][is.nan(alpha_backfit[[k]])]<-1
       alpha_backfit[[k]][is.na(alpha_backfit[[k]])]<-1
       alpha_backfit[[k]][alpha_backfit[[k]]==Inf]<-1
-      alpha_backfit[[k]][alpha_backfit[[k]]<0]<-1
+      alpha_backfit[[k]][alpha_backfit[[k]]<0]<-0.0001
       #  }
       #  for(k in 1:d)
       #   {
@@ -561,7 +595,7 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
       
       #     }
       if (LC==TRUE) alpha.1_backfit[[k]]<-rep(0,n.grid[k]) else{
-        alpha.1_backfit[[k]]<- get.alpha.1.new(data,alpha_backfit,alpha.1_backfit,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n)}
+        alpha.1_backfit[[k]]<- get.alpha.1.new(time,status,alpha_backfit,alpha.1_backfit,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n)}
       alpha.1_backfit[[k]][is.nan(alpha.1_backfit[[k]])]<-0
       alpha.1_backfit[[k]][is.na(alpha.1_backfit[[k]])]<-0
       # alpha.1_backfit[[k]][alpha.1_backfit[[k]]>30]<-30
@@ -590,14 +624,13 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
     
     #plot(x.grid[[2]],phi[[1]](x.grid[[2]]),lty=3,col=1,lwd=2) 
     #  if (l==2) plot(x.grid[[2]],log(alpha_backfit[[2]]),ylim=c(-2,2) ) else lines(x.grid[[2]],log(alpha_backfit[[2]] ) )
-    
-    #lines(x.grid[[2]], log(alpha_backfit[[2]]),col='blue',lwd=2)
+   #plot(x.grid[[1]], log(alpha_backfit[[1]]),col='blue',lwd=2) 
     
     
     if (max(max(abs(unlist(alpha_backfit_old)-unlist(alpha_backfit)),na.rm=TRUE),max(abs(unlist(alpha.1_backfit_old)-unlist(alpha.1_backfit)),na.rm=TRUE))<= 0.001) break
     for(k in 1:d){
-      print(c(l,max(abs(unlist(alpha_backfit_old[[k]])-unlist(alpha_backfit[[k]])),na.rm=TRUE),max(abs(unlist(alpha.1_backfit_old[[k]])-unlist(alpha.1_backfit[[k]]
-      )),na.rm=TRUE)))
+      print(c(l,max(abs(unlist(log(alpha_backfit_old[[k]]))-unlist(log(alpha_backfit[[k]]))),na.rm=TRUE),max(abs(unlist((alpha.1_backfit_old[[k]]))-unlist((alpha.1_backfit[[k]]
+      ))),na.rm=TRUE)))
     }
   }
   
@@ -615,32 +648,84 @@ SBF.MH.CLL<-function(formula,data,bandwidth,weight='sw',x.grid=NULL,n.grid.addit
 
 
 
+predict.hazard<-function(result, data){
+  data<-as.matrix(data)
+  if (ncol(data)==1) data<-t(data)
+  x.grid<-result$x.grid
+  alpha_sbf<-result$alpha_backfit
+  hazard <- matrix(nrow=nrow(data), ncol=(length( alpha_sbf)+1))
+  
+  for(i in 1:nrow(data)){
+    for (j in 1:length(alpha_sbf)){
+      index<- which.min(abs(as.numeric(data[i,j])-x.grid[[j]]))
+      error<-  x.grid[[j]][index] - as.numeric(as.numeric(data[i,j]))
+      if (error>0&index>=2) {index2<-index-1} 
+      if (error<0) {index2<-index+1} 
+      error2<-  result$x.grid[[j]][index2] -   as.numeric(data[i,j])
+      
+      if (error!=0&index2>=1&index2<=length(x.grid[[j]]))  {
+        hazard[i,j] <- (abs(error)*alpha_sbf[[j]][index]+abs(error2)*alpha_sbf[[j]][index2])/(abs(error)+abs(error2))} else{
+          hazard[i,j] <- alpha_sbf[[j]][index]
+        }
+    } 
+    hazard[i,length( alpha_sbf)+1]<-prod(hazard[i,-(length( alpha_sbf)+1)])
+  }
+  
+  
+  return(hazard)
+}
 
-predict.sbf<-function(result, data, times){
+
+predict.survival<-function(result, data, times=NULL){
   data<-as.matrix(data)
   x.grid<-result$x.grid
   alpha_sbf<-result$alpha_backfit
-  surv.times<-x.grid[[1]][-1]
+  if (is.null(times)) surv.times<-x.grid[[1]][-1] else surv.times<-times
   surv.prob <- matrix(nrow=nrow(data), ncol=length(surv.times))
  
-  for(i in 1:nrow(data)){
-  find.index<- error<-numeric(length(alpha_sbf))
-  for (j in 2:length(alpha_sbf)){
-    error[j] <- min(abs(as.numeric(as.numeric(data[i,j-1]))-x.grid[[j]]))
-    find.index[j]<- which.min(abs(as.numeric(data[i,j-1])-x.grid[[j]]))
-  }
+  hazard.values<-predict.hazard(result,cbind(rep(1,nrow(data)),data))
+  
+   for(i in 1:nrow(data)){
+  # find.index<- error<-numeric(length(alpha_sbf))
+  # for (j in 2:length(alpha_sbf)){
+  #   error[j] <- min(abs(as.numeric(as.numeric(data[i,j-1]))-x.grid[[j]]))
+  #   find.index[j]<- which.min(abs(as.numeric(data[i,j-1])-x.grid[[j]]))
+  # }
+  
+  
   
   par<-1
   for (j in 2:length(alpha_sbf)){
-    par <- par * alpha_sbf[[j]][find.index[j] ]
+    par <- par * hazard.values[i,j]
   }
   
-  
+  if (is.null(times)){
   surv.prob[i,]<-exp(-par*cumsum(alpha_sbf[[1]][-1]*diff(x.grid[[1]])))
+  } else{ 
+     for (j in 1:length(times)) {
+       index <- which.min(abs(result$x.grid[[1]]-times[j]))
+       error <-  result$x.grid[[1]][index] - times[j]
+      
+       if (error==0)  surv.prob[i,j] <- exp(-par*sum(alpha_sbf[[1]][2:index]*diff(x.grid[[1]][1:index]))) else{   if (error>0&index==2) surv.prob[i,j] <- exp(-par*sum(alpha_sbf[[1]][2:index]*diff(x.grid[[1]][1:index])))
+       if ((error>0&index>2) | (error<0& index>1)) {
+         if (error>0) {index2<-index-1} 
+         if (error<0)  {index2<-index+1}
+       error2<-   result$x.grid[[1]][index2] - times[j]          
+      temp1<-  exp(-par*sum(alpha_sbf[[1]][2:index]*diff(x.grid[[1]][1:index])))
+      temp2<-  exp(-par*sum(alpha_sbf[[1]][2:index2]*diff(x.grid[[1]][1:index2])))
+     surv.prob[i,j] <- (abs(error)*temp1 + abs(error2)*temp2)/(abs(error)+abs(error2))}
+       }
+    if (index==1) surv.prob[i,j]  <- 1
+  }}
   
   }
   return(list(surv.prob=surv.prob, surv.times= surv.times))
   }
+
+
+
+
+
 mhcovariate <- function(n,d=5,rho=0,seed){
     if (!missing(seed)) set.seed(seed)
     stddev<-rep(1,d-1)
