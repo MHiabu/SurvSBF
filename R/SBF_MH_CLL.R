@@ -27,8 +27,6 @@ X <- cbind( time,X)
 
 # }}}
 
-
-
 smooth.alpha<-function(alpha,K.X.b,k.X.b,K.b,k.b,d,n)
 {
   alpha.smooth.i<-array(dim=c(n,d))
@@ -58,10 +56,9 @@ taylor.alpha<-function(alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,x.grid,n.grid,d,n)
   
   
   #taylor.alpha.i.0<- ((dX0.b*K.b/k.b)%*%(alpha.1[[1]]*dx[[1]])) + ((K.b/k.b)%*%(alpha[[1]]*dx[[1]]))
-  
-  
  # temp <-taylor.alpha.i.0
-  taylor.alpha.i.0 <-   as.numeric( dx[[1]]   %*%   (( alpha[[1]]+(dX0.b*alpha.1[[1]] ))*K.b) )
+  
+  taylor.alpha.i.0 <-   as.numeric( t(dx[[1]])   %*%   (( alpha[[1]]+(dX0.b*alpha.1[[1]] ))*K.b) )
   
   
    # plot(alpha.1[[1]])
@@ -90,10 +87,9 @@ taylor.alpha<-function(alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,x.grid,n.grid,d,n)
   return(list( taylor.alpha.i= taylor.alpha.i,taylor.alpha.i.0=taylor.alpha.i.0))
 }
 
-get.alpha.new<-function(time,status,alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n,l)
+get.alpha.new<-function(O1,time,status,alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n,l)
 {
   
-  if (weight=='sw'){
     taylor.alpha <- taylor.alpha(alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,x.grid,n.grid,d,n)
     
     if (k==1)  taylor.alpha.minusk<-numeric(n) else   taylor.alpha.minusk<-array(dim=c(n,n.grid[1])) 
@@ -105,84 +101,31 @@ get.alpha.new<-function(time,status,alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.
   
     if (k==1)
     {
-      D <-     colSums( (taylor.alpha.minusk*Y)    %*%  (K.b *dx[[1]])  ) 
+      D <-     colSums( (taylor.alpha.minusk*Y)    %*%  (t(K.b) *dx[[1]])  ) 
     }else
       D <-   K.X.b[[k]]  %*%  (taylor.alpha.minusk*Y)    %*%  dx[[1]] 
+    
       
     
     if (k==1)
     { 
-      O2 <- colSums( (taylor.alpha.minusk*Y)    %*%  (dX0.b*K.b *dx[[1]])  )  
+      O2 <- colSums( (taylor.alpha.minusk*Y)    %*%  (t(dX0.b*K.b) *dx[[1]])  )  
     }else 
       O2 <- ( dX.b[[k]]*K.X.b[[k]] ) %*%  (taylor.alpha.minusk*Y)    %*%  dx[[1]] 
+
     
     
-    #  O<- rowSums(sapply(1:n, function (i) { return((alpha.minusk.smooth[kk,bb,i]*data$status[i])*(K.X.b[[kk]][bb,i,]/k.X.b[[kk]][bb,i]))})) ### for different waiting
-    O1<- K.X.b[[k]] %*% status
-    O<-O1 - alpha.1[[k]]*O2
-  }
+    O<-O1[[k]] - alpha.1[[k]]*O2
   
   
-  
-  if (weight=='no'){
-    taylor.alpha<-taylor.alpha(alpha,alpha.1,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,x.grid,n.grid,d,n)
-    # plot(taylor.alpha$taylor.alpha.i.0,ylab='nosquare')
-    # plot(taylor.alpha$taylor.alpha.i.0.square,ylab='square')
-    
-    
-    if (k==1)  taylor.alpha.minusk<-numeric(n) else   taylor.alpha.minusk<-array(dim=c(n,n.grid[1])) 
-    for (i in 1:n)
-    {
-      if (k==1) taylor.alpha.minusk[i] <-  prod(taylor.alpha$taylor.alpha.i[-1,i]) else
-      {taylor.alpha.minusk[i,] <-  prod(taylor.alpha$taylor.alpha.i[-k,i])*taylor.alpha$taylor.alpha.i.0
-      }
-    } 
-    
-    
-    
-    if (k==1)  taylor.alpha.minusk.square<-numeric(n) else   taylor.alpha.minusk.square<-array(dim=c(n,n.grid[1])) 
-    for (i in 1:n)
-    {
-      if (k==1) taylor.alpha.minusk.square[i] <-  prod(taylor.alpha$taylor.alpha.i.square[-1,i]) else
-      {taylor.alpha.minusk.square[i,] <-  prod(taylor.alpha$taylor.alpha.i.square[-k,i])*taylor.alpha$taylor.alpha.i.0.square
-      }
-    }
-    
-    
-    
-    if (k==1)
-    {
-      D<- rowSums(sapply(1:n, function (i) { return(  (K.b/k.b)  %*%  ((dx[[1]]*taylor.alpha.minusk.square[i]*Y[i,]))   )}))
-    }else D<- rowSums(sapply(1:n, function (i) { return(as.numeric(dx[[1]]%*%(Y[i,]*(taylor.alpha.minusk.square[i,])))*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-    
-    
-    
-    if (k==1)
-    {
-      O2<- rowSums(sapply(1:n, function (i) { return((t(dX0.b)*K.b/k.b)  %*% (dx[[1]]*(taylor.alpha.minusk.square[i]*Y[i,]))  )}))
-    }else O2<- rowSums(sapply(1:n, function (i) { return(as.numeric(dx[[1]]%*%(Y[i,]*(taylor.alpha.minusk.square[i,])))*(dX.b[[k]][i,]*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-    
-    
-    
-    if (k==1)
-    {
-      O1<- rowSums(sapply(1:n, function (i) { return((status[i])*taylor.alpha.minusk[i]*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-    }else O1<- rowSums(sapply(1:n, function (i) { return((status[i])*taylor.alpha.minusk[i,which(x.grid[[1]]==time[i])]*(K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-    
-    
-    O<-O1-alpha.1[[k]]*O2
-  }
-  
-  
-  
+
   
   return(as.numeric(O/D))
 } 
 
-get.alpha.1.new<-function(time,status,alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n)
+get.alpha.1.new<-function(O1.1,time,status,alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n)
 {
   
-  if (weight=='sw'){
     taylor.alpha <- taylor.alpha(alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,x.grid,n.grid,d,n)
     
     
@@ -197,9 +140,9 @@ get.alpha.1.new<-function(time,status,alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,
     
     if (k==1)
     {
-      D <-     colSums( (taylor.alpha.minusk*Y)    %*%  ((dX0.b)^2*K.b *dx[[1]])  ) 
+      D.1 <-     colSums( (taylor.alpha.minusk*Y)    %*%  (t((dX0.b)^2*K.b) *dx[[1]])  ) 
     }else
-      D <-   ((dX.b[[k]])^2*K.X.b[[k]])  %*%  (taylor.alpha.minusk*Y)    %*%  dx[[1]] 
+      D.1 <-   ((dX.b[[k]])^2*K.X.b[[k]])  %*%  (taylor.alpha.minusk*Y)    %*%  dx[[1]] 
     
     
     
@@ -208,69 +151,42 @@ get.alpha.1.new<-function(time,status,alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,
     
     if (k==1)
     { 
-      O2 <- colSums( (taylor.alpha.minusk*Y)    %*%  (dX0.b*K.b *dx[[1]])  )  
+      O2.1 <- colSums( (taylor.alpha.minusk*Y)    %*%  (t(dX0.b*K.b) *dx[[1]])  )  
     }else 
-      O2 <- ( dX.b[[k]]*K.X.b[[k]] ) %*%  (taylor.alpha.minusk*Y)    %*%  dx[[1]] 
+      O2.1 <- ( dX.b[[k]]*K.X.b[[k]] ) %*%  (taylor.alpha.minusk*Y)    %*%  dx[[1]] 
+    
+
+   
+    O.1<-O1.1[[k]] - alpha[[k]]*O2.1
     
     
-    #  O<- rowSums(sapply(1:n, function (i) { return((alpha.minusk.smooth[kk,bb,i]*data$status[i])*(K.X.b[[kk]][bb,i,]/k.X.b[[kk]][bb,i]))})) ### for different waiting
-    O1<- (dX.b[[k]]*K.X.b[[k]]) %*% status
-    O<-O1 - alpha.1[[k]]*O2
-    
-    
-    
-    #  O<- rowSums(sapply(1:n, function (i) { return((alpha.minusk.smooth[kk,bb,i]*data$status[i])*(K.X.b[[kk]][bb,i,]/k.X.b[[kk]][bb,i]))})) ### for different waiting
-    O<-O1-alpha[[k]]*O2
-  }
-  
-  
-  
-  if (weight=='no'){
-    taylor.alpha<-taylor.alpha(alpha,alpha.1,dx,K.X.b,k.X.b,K.b,k.b,dX.b,dX0.b,x.grid,n.grid,d,n)
-    
-    if (k==1)  taylor.alpha.minusk<-numeric(n) else   taylor.alpha.minusk<-array(dim=c(n,n.grid[1])) 
-    for (i in 1:n)
-    {
-      if (k==1) taylor.alpha.minusk[i] <-  prod(taylor.alpha$taylor.alpha.i[-1,i]) else
-      {taylor.alpha.minusk[i,] <-  prod(taylor.alpha$taylor.alpha.i[-k,i])*taylor.alpha$taylor.alpha.i.0
-      }
-    } 
-    
-    if (k==1)  taylor.alpha.minusk.square<-numeric(n) else   taylor.alpha.minusk.square<-array(dim=c(n,n.grid[1])) 
-    for (i in 1:n)
-    {
-      if (k==1) taylor.alpha.minusk.square[i] <-  prod(taylor.alpha$taylor.alpha.i.square[-1,i]) else
-      {taylor.alpha.minusk.square[i,] <-  prod(taylor.alpha$taylor.alpha.i.square[-k,i])*taylor.alpha$taylor.alpha.i.0.square
-      }
-    }
-    
-    
-    if (k==1) { D<- rowSums(sapply(1:n, function (i) { return(  ((t(dX0.b))^2*K.b/k.b) %*% ((dx[[1]]*taylor.alpha.minusk.square[i]*Y[i,])) ) }))
-    }else D<- rowSums(sapply(1:n, function (i) { return(as.numeric(dx[[1]]%*%(Y[i,]*(taylor.alpha.minusk.square[i,])))*((dX.b[[k]][i,])^2*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-    
-    
-    if (k==1)
-    {
-      O2<- rowSums(sapply(1:n, function (i) { return((t(dX0.b)*(K.b/k.b))%*%(dx[[1]]*(taylor.alpha.minusk.square[i]*Y[i,])))}))
-    }else O2<- rowSums(sapply(1:n, function (i) { return(as.numeric(dx[[1]]%*%(Y[i,]*(taylor.alpha.minusk.square[i,])))*((dX.b[[k]][i,])*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-    
-    
-    #  O<- rowSums(sapply(1:n, function (i) { return((alpha.minusk.smooth[kk,bb,i]*data$status[i])*(K.X.b[[kk]][bb,i,]/k.X.b[[kk]][bb,i]))})) ### for different waiting
-    if (k==1)
-    {
-      O1<- rowSums(sapply(1:n, function (i) { return((status[i])*taylor.alpha.minusk[i]*((dX.b[[k]][i,])*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-    }else O1<- rowSums(sapply(1:n, function (i) { return((status[i])*taylor.alpha.minusk[i,which(x.grid[[1]]==time[i])]*((dX.b[[k]][i,])*K.X.b[[k]][i,]/k.X.b[[k]][i]))}))
-    
-    O<-O1-alpha[[k]]*O2
-    
-  }
+
   
   
   
   
   
-  return(as.numeric(O/D))
+  
+  
+  
+  
+  return(as.numeric(O.1/D.1))
 } 
+
+get.O1<-function(k,status,K.X.b){
+  
+  O1 <- as.numeric(  K.X.b[[k]] %*% status )
+  
+  return(O1)
+}
+
+
+get.O1.1<-function(k,status,K.X.b,dX.b){
+  O1<- as.numeric((dX.b[[k]]*K.X.b[[k]]) %*% status)
+  return(O1)
+}
+
+
 
 
 
@@ -322,16 +238,17 @@ k.b<-array(0,dim=c(n.grid[1]))
 x.grid.array<-matrix(rep(x.grid[[1]], times=n.grid[1]),nrow = n.grid[1], ncol = n.grid[1],byrow=FALSE)   # 
 
 
-u<- x.grid.array-t(x.grid.array) # u is t-s for all t,s on the grid considered
+u<- x.grid.array-t(x.grid.array) # u[t,s]= t-s for all t,s on the grid considered
 K.b<-apply(u/bandwidth[1],1:2,kern)/(bandwidth[1])
 k.b<-colSums(dx[[1]]*K.b)                      # small k for normailzing kernel, since grid points are symmetric normalization can be used for both row and column
 if (kcorr==FALSE) {k.b<-rep(1,n.grid[1])}                     
 
 
-dX0.b<-u#/bandwidth[1]
-K.b <- K.b %*% diag(1/k.b)  ### row-wise division
+dX0.b<- u#/bandwidth[1]     # dX0.b[t,s]= t-s for all t,s on the grid considered
+K.b <- K.b %*% diag(1/k.b)  ### row-wise division --> colSums(dx[[1]]*K.b)=1
 
 
+### define exposure=Y[i,s]
 Y<-t(sapply(1:n,function(i) { temp<-numeric(n.grid[1])
 for (l in 1:n.grid[1]) {temp[l]<-as.numeric((x.grid[[1]][l]<=time[i]))
 } 
@@ -339,19 +256,25 @@ return(temp)
 }
 ))
 
-K.X.b<-k.X.b<-list()
+dX.b<-K.X.b<-k.X.b<-list()
 for( k in 1:d){
   K.X.b[[k]]<-array(0,dim=c(n,n.grid[k]))
   k.X.b[[k]]<-numeric(n)
   
   x.grid.array<-matrix(-X[,k],nrow =n.grid[k], ncol =n ,byrow=TRUE)   # 
-  u<- x.grid.array+x.grid[[k]]
+  u<- x.grid.array+x.grid[[k]]  ####  u[,i]=x_k - X_{ik}
   K.X.b[[k]]<-apply(u/bandwidth[k],1:2,kern)/(bandwidth[k])
   k.X.b[[k]]<-colSums(dx[[k]]*K.X.b[[k]])   
   if (kcorr==FALSE) k.X.b[[k]] <- rep(1,n)
   dX.b[[k]]<- u
-  K.X.b[[k]]<-K.X.b[[k]] %*%  diag(1/k.X.b[[k]])  ### row-wise division
+  K.X.b[[k]]<- K.X.b[[k]] %*%  diag(1/k.X.b[[k]])  ### row-wise division ---> col integration=1
 }
+
+
+O1<-O1.1<-list()
+O1 <- lapply(1:d, get.O1, status,K.X.b)
+O1.1 <- lapply(1:d, get.O1.1,status,K.X.b,dX.b)
+
 
 alpha_backfit<-list()
 alpha.1_backfit<-list()
@@ -388,7 +311,7 @@ for (l in 2:it)
     
     #for(inner in 1:5){
     
-    alpha_backfit[[k]]<- get.alpha.new(time,status,alpha_backfit,alpha.1_backfit,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n,l)
+    alpha_backfit[[k]]<- get.alpha.new(O1,time,status,alpha_backfit,alpha.1_backfit,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n,l)
     
     
     #for (j in 2:d) {  alpha_backfit[[j]]<- alpha_backfit[[j]]/ alpha_backfit[[j]][1]
@@ -402,7 +325,7 @@ for (l in 2:it)
     alpha_backfit[[k]][is.nan(alpha_backfit[[k]])]<-1
     alpha_backfit[[k]][is.na(alpha_backfit[[k]])]<-1
     alpha_backfit[[k]][alpha_backfit[[k]]==Inf]<-1
-    alpha_backfit[[k]][alpha_backfit[[k]]<0]<-0.0001
+    alpha_backfit[[k]][alpha_backfit[[k]]<=0]<-0.0001
     #  }
     #  for(k in 1:d)
     #   {
@@ -410,7 +333,7 @@ for (l in 2:it)
     
     #     }
     if (LC==TRUE) alpha.1_backfit[[k]]<-rep(0,n.grid[k]) else{
-      alpha.1_backfit[[k]]<- get.alpha.1.new(time,status,alpha_backfit,alpha.1_backfit,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n)}
+      alpha.1_backfit[[k]]<- get.alpha.1.new(O1.1,time,status,alpha_backfit,alpha.1_backfit,dx,K.X.b,K.b,dX.b,dX0.b,Y,k,x.grid,n.grid,d,n)}
     alpha.1_backfit[[k]][is.nan(alpha.1_backfit[[k]])]<-0
     alpha.1_backfit[[k]][is.na(alpha.1_backfit[[k]])]<-0
     # alpha.1_backfit[[k]][alpha.1_backfit[[k]]>30]<-30
