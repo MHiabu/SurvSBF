@@ -12,12 +12,17 @@ sapply(list.files('R',pattern = "[.]R$",full.names=TRUE),source)
 
 seed1<-4840
 seed1<-sample(1:99999,1) 
-set <- list(d=4,rho=0,model=2,violate.cox=TRUE,seed=seed1)
+set <- list(d=5,rho=0.8,model=2,violate.cox=TRUE,seed=seed1)
 large.data <- do.call("mhdata",c(list(n=20000),set))
 train.data <- do.call("mhdata",c(list(n=600),set))
 pred <- paste0("V", 1:(set$d-1))
 frmla<-reformulate(pred,"Surv(time, status)")
 # plot(prodlim(Hist(time,status)~1,data=large.data),xlim=c(0,100))
+
+pred2 <- paste0("pspline(","V", 1:(set$d-1),",method='aic')")
+frmla2<-reformulate(pred2,"Surv(time, status)")
+
+
 
 
 # ranger
@@ -25,13 +30,16 @@ frmla<-reformulate(pred,"Surv(time, status)")
 # randomForestSRC
 forest2 <-rfsrc(frmla,data=train.data,importance = "none",num.trees=1000,mtry=set$d)
 # cox
-cox.fit<-coxph(frmla , data=train.data)
+cox.fit<-coxph(frmla2, data=train.data)
+
+
+
 # munir's stuff
-it=100
+it=20
 
 b.grid<-numeric(set$d)
-  b.grid[1]<-0.1^set$d
-b.grid[2:set$d]<-rep(0.2,set$d-1)
+  b.grid[1]<-0.01
+b.grid[2:set$d]<-rep(0.3,set$d-1)
 alpha_backfit<-SBF.MH.LC(frmla,train.data,b.grid,it=it)
 alpha_backfit2<-SBF.MH.CLL(frmla,train.data,b.grid,weight='sw',it=it,x.grid=NULL,integral.approx='midd',kcorr='TRUE',LC='FALSE')
 
