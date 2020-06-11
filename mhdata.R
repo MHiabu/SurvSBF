@@ -22,7 +22,7 @@ mhrate <- function(Z,model=1,violate.cox=TRUE){
     if (violate.cox==TRUE){
         # Cox violated
         for(k in 1:d){
-            if ((k%%2)==1)  {phi[[k]]<- function(z) 2*sin(pi*z)} else {phi[[k]]<-function(z) -2*sin(pi*z)}
+            if ((k%%2)==1)  {phi[[k]]<- function(z) 1*sin(pi*z)} else {phi[[k]]<-function(z) -1*sin(pi*z)}
         }
     }else{
         # Cox satisfied
