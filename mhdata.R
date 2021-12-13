@@ -27,7 +27,7 @@ mhrate <- function(Z,model=1,violate.cox=TRUE){
     }else{
         # Cox satisfied
         for(k in 1:d){
-            if ((k%%2)==1)  {phi[[k]]<- function(z) -2*z} else {phi[[k]]<-function(z) 2*z}
+            if ((k%%2)==1)  {phi[[k]]<- function(z) -z} else {phi[[k]]<-function(z) z}
         }
     }
     

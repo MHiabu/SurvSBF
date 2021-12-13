@@ -96,7 +96,7 @@ get.alpha.new<-function(O1,time,status,alpha,alpha.1,dx,K.X.b,K.b,dX.b,dX0.b,Y,k
    
    
     if (k==1) taylor.alpha.minusk <-  apply(taylor.alpha$taylor.alpha.i[,-1],1,prod) else  
-        {taylor.alpha.minusk <- apply(taylor.alpha$taylor.alpha.i[,-k],1,prod) * matrix(taylor.alpha$taylor.alpha.i.0, ncol=n, nrow=n.grid[[1]], byrow = TRUE)
+        {taylor.alpha.minusk <- apply(taylor.alpha$taylor.alpha.i[,-k],1,prod) * matrix(taylor.alpha$taylor.alpha.i.0, ncol=n.grid[[1]], nrow=n, byrow = TRUE)
     }
   
     if (k==1)
